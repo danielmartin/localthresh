@@ -12,7 +12,7 @@ From the project directory, type "make".
 
 (At this point, only a local adaptive method based on the mean is implemented)
 
-./localthresh [-w windowsize] [-c constant] input output
+	./localthresh [-w windowsize] [-c constant] input output
 
 ## References
 
