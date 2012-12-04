@@ -10,13 +10,16 @@ From the project directory, type "make".
 
 ## Usage
 
-(At this point, only a local adaptive method based on the mean is implemented)
+You can use one of the following syntax:
 
-	./localthresh [-w windowsize] [-c constant] input output
+	./localthresh Mean [-w windowsize] [-c constant] input output
+	./localthresh Niblack [-w windowsize] [-c constant] [-k std_dev_constant] input output
 
 ## References
 
 More information about local thresholding based on the mean is available at http://homepages.inf.ed.ac.uk/rbf/HIPR2/adpthrsh.htm
+
+Niblack's method is based on the book published by the same author: "An Introduction to Digital Image Processing" (1986)
 
 ## Licensing
 
