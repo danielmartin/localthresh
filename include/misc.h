@@ -19,7 +19,7 @@
 #ifndef __MISC_H_
 #define __MISC_H_
 
-unsigned long *
-compute_integral_image(const Image *in_img);
+unsigned long long int *
+compute_integral_image(const Image *in_img, const int squared);
 
 #endif

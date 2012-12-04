@@ -29,10 +29,11 @@
 #include "main.h"
 #include "algorithms.h"
 
-void 
+static void 
 print_usage()
 {
-    fprintf(stderr, "Usage: localthresh input_image output_image [-w window_size] [-c constant]\n");
+    fprintf(stderr, "Usage: localthresh Mean input_image output_image [-w window_size] [-c constant]\n");
+    fprintf(stderr, "       localthresh Niblack input_image output_image [-w window_size] [-c constant] [-k std_constant]\n");
     exit(1);
 }
 
@@ -48,18 +49,20 @@ main(int argc, char **argv)
     char out_filename[MAX_FILENAME];
     size_t in_img_info_filename_length, out_img_filename_length;
     long win_size, c;
+    double k;
     char *endptr;
-    char *char_win_size, *char_c, *input_file, *output_file;
-    char_win_size = char_c = input_file = output_file = NULL;
+    char *char_win_size, *char_c, *char_k, *input_file, *output_file, *algorithm;
 
-    if (argc < 3) {
+    char_win_size = char_c = char_k = input_file = output_file = NULL;
+
+    if (argc < 4) {
 	fprintf(stderr, "Invalid number of arguments\n");
 	print_usage();
 	exit(EXIT_FAILURE);
     }
 
     opterr = 0;
-    while ((c = getopt(argc, argv, "w:c:")) != -1)
+    while ((c = getopt(argc, argv, "w:c:k:")) != -1)
 	switch (c) {
 	case 'w':
 	    char_win_size = optarg;
@@ -67,8 +70,11 @@ main(int argc, char **argv)
 	case 'c':
 	    char_c = optarg;
 	    break;
+	case 'k':
+	    char_k = optarg;
+	    break;
 	case '?':
-	    if (optopt == 'w' || optopt == 'c')
+	    if (optopt == 'w' || optopt == 'c' || optopt == 'k')
 		fprintf(stderr, "Option -%c requires a numeric argument.\n", optopt);
 	    else if (isprint (optopt))
 		fprintf(stderr, "Unknown option `-%c'.\n", optopt);
@@ -79,48 +85,78 @@ main(int argc, char **argv)
 	default:
 	    print_usage();
 	}
+    if (char_win_size) {
+	win_size = strtol(char_win_size, &endptr, 10);
+	if (endptr == char_win_size || win_size <= 0) {
+	    fprintf(stderr, "Window size value is incorrect.\n");
+	    print_usage();
+	    exit(EXIT_FAILURE);
+	}
+    }
+    else
+	win_size = 30; /* Default value */
+
+    if (char_c) {
+	c = strtol(char_c, &endptr, 10);
+	if (endptr == char_c || c < 0) {
+	    fprintf(stderr, "Value for constant c is incorrect.\n");
+	    print_usage();
+	    exit(EXIT_FAILURE);
+	}
+    }    
+    else
+	c = 0; /* Default value */
+
+    if (char_k) {
+	k = strtod(char_k, &endptr);
+	if (endptr == char_k) {
+	    fprintf(stderr, "Value for constant k is incorrect.\n");
+	    print_usage();
+	    exit(EXIT_FAILURE);
+	}
+    }
+    else
+	k = 0.2; /* Default value */
     
-    win_size = strtol(char_win_size, &endptr, 10);
-    if (endptr == char_win_size) {
-	fprintf(stderr, "Window size value is incorrect.\n");
-	print_usage();
-	exit(EXIT_FAILURE);
-    }
-
-    c = strtol(char_c, &endptr, 10);
-    if (endptr == char_c) {
-	fprintf(stderr, "Constant is incorrect.\n");
-	print_usage();
-	exit(EXIT_FAILURE);
-    }
-
     if ((errno == ERANGE && (win_size == LONG_MAX || win_size == LONG_MIN))
 	|| (errno == ERANGE && (c == LONG_MAX || c == LONG_MIN))
+	|| (errno == ERANGE && (k == LONG_MAX || k == LONG_MIN))
 	|| (errno != 0 && win_size == 0)
-	|| (errno != 0 && c == 0)) {
+	|| (errno != 0 && c == 0)
+	|| (errno != 0 && k == 0)) {
 	perror("strtol");
 	exit(EXIT_FAILURE);
     }
 
-    if (argc - optind != 2) {
-	fprintf(stderr, "Input and output files are not supplied.\n");
+    if (argc - optind != 3) {
+	fprintf(stderr, "Algorithm, input and output files are not supplied.\n");
 	print_usage();
 	exit(EXIT_FAILURE);
     }
-    /* First argument is input file */
-    input_file = argv[optind];
 
-    /* Second argument is output file */
-    output_file = argv[optind+1];
+    /* First argument is algorithm */
+    if (strncmp(argv[optind], "Mean", 4*sizeof(char)) &&
+	strncmp(argv[optind], "Niblack", 7*sizeof(char))) {
+	fprintf(stderr, "Algorithm parameter is invalid.\n");
+	print_usage();
+	exit(EXIT_FAILURE);
+    }
+    else
+	algorithm = argv[optind];
+	
+    /* Second argument is input file */
+    input_file = argv[optind+1];
+
+    /* Third argument is output file */
+    output_file = argv[optind+2];
 
     InitializeMagick(*argv);
     GetExceptionInfo(&exception);
     in_img_info = CloneImageInfo((ImageInfo*)NULL);
     in_img_info_filename_length = MaxTextExtent;
     strncpy(in_img_info->filename, input_file, in_img_info_filename_length);
-    if (in_img_info_filename_length) {
+    if (in_img_info_filename_length)
 	in_img_info->filename[in_img_info_filename_length - 1] = '\0';
-    }
 
     /* Read the input image */
     in_img = ReadImage(in_img_info, &exception);
@@ -135,9 +171,16 @@ main(int argc, char **argv)
     }
 
     start_time = clock();
-    out_img = mean_local_threshold(in_img, win_size, c);
+
+    /* Mean */
+    if (!strncmp(algorithm, "Mean", 4*sizeof(char)))
+	out_img = mean_local_threshold(in_img, win_size, c);
+    /* Niblack */
+    else if (!strncmp(algorithm, "Niblack", 7*sizeof(char)))
+	out_img = niblack_local_threshold(in_img, win_size, k, c);
+
     elapsed_time = ((double)(clock() - start_time)) / CLOCKS_PER_SEC;
-    printf("Time mean improved: %f\n", elapsed_time);
+    printf("Elapsed time %s: %f\n", algorithm, elapsed_time);    
 
     /* Write the binarized image to disk */
     out_img_info = CloneImageInfo((ImageInfo*)NULL);

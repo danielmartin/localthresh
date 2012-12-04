@@ -33,5 +33,6 @@
 #include <limits.h>
 #include <errno.h>
 #include <magick/api.h>
+#include <math.h>
 
 #endif

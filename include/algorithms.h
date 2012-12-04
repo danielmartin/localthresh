@@ -21,5 +21,7 @@
 
 Image *
 mean_local_threshold(const Image *in_img, const int win_size, const int c);
+Image *
+niblack_local_threshold(const Image *in_img, const int win_size, const double k, const int c);
 
 #endif

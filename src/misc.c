@@ -23,12 +23,12 @@
 #include "main.h"
 #include "misc.h"
 
-unsigned long *
-compute_integral_image(const Image *in_img)
+unsigned long long int*
+compute_integral_image(const Image *in_img, const int squared)
 {
     unsigned int num_rows = in_img->rows;
     unsigned int num_cols = in_img->columns;
-    unsigned long *out_data;
+    unsigned long long int *out_data;
     Image *out_img;
     unsigned char *in_data;
     int ir, ic;
@@ -43,15 +43,26 @@ compute_integral_image(const Image *in_img)
     }
 
     /* Allocate space for the output image */
-    out_data = (unsigned long*)malloc(num_cols * num_rows * sizeof(unsigned long));
+    out_data = (unsigned long long int*)malloc(num_cols * num_rows * sizeof(unsigned long long int));
 
-    for (ir = 0; ir < num_rows; ir++)
-	for (ic = 0; ic < num_cols; ic++) {				      
-	    if (ir == 0 && ic == 0) out_data[0] = in_data[0];
-	    else if (ir == 0) out_data[ic] = in_data[ic] + out_data[ic-1];
-	    else if (ic == 0) out_data[ir*num_cols] = in_data[ir*num_cols] + out_data[(ir-1)*num_cols];
-	    else out_data[ir*num_cols+ic] = in_data[ir*num_cols+ic] + out_data[(ir-1)*num_cols+ic] + out_data[ir*num_cols+ic-1] - out_data[(ir-1)*num_cols+ic-1];
-	}
+    if (!squared) {
+	for (ir = 0; ir < num_rows; ir++)
+	    for (ic = 0; ic < num_cols; ic++) {      
+		if (ir == 0 && ic == 0) out_data[0] = in_data[0];
+		else if (ir == 0) out_data[ic] = in_data[ic] + out_data[ic-1];
+		else if (ic == 0) out_data[ir*num_cols] = in_data[ir*num_cols] + out_data[(ir-1)*num_cols];
+		else out_data[ir*num_cols+ic] = in_data[ir*num_cols+ic] + out_data[(ir-1)*num_cols+ic] + out_data[ir*num_cols+ic-1] - out_data[(ir-1)*num_cols+ic-1];
+	    }
+    }
+    else {
+	for (ir = 0; ir < num_rows; ir++)
+	    for (ic = 0; ic < num_cols; ic++) {      
+		if (ir == 0 && ic == 0) out_data[0] = pow(in_data[0], 2);
+		else if (ir == 0) out_data[ic] = pow(in_data[ic], 2) + out_data[ic-1];
+		else if (ic == 0) out_data[ir*num_cols] = pow(in_data[ir*num_cols], 2) + out_data[(ir-1)*num_cols];
+		else out_data[ir*num_cols+ic] = pow(in_data[ir*num_cols+ic], 2) + out_data[(ir-1)*num_cols+ic] + out_data[ir*num_cols+ic-1] - out_data[(ir-1)*num_cols+ic-1];
+	    }
+    }
 
     DestroyExceptionInfo(&exception);
     free(in_data);
